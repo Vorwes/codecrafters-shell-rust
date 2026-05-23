@@ -10,7 +10,7 @@ fn main() {
         io::stdin().read_line(&mut command).unwrap();
         command = command.trim().to_string();
 
-        let builtins = &["exit", "echo"];
+        let builtins = &["exit", "echo", "type"];
         if command == "exit" {
             break;
         } else if command.starts_with("echo") {
