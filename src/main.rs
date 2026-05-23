@@ -9,8 +9,9 @@ fn main() {
         io::stdout().flush().unwrap();
         let mut command = String::new();
         io::stdin().read_line(&mut command).unwrap();
-        if command.trim() == "exit" {
-            exit(0);
+        command = command.trim().to_string();
+        if command == "exit" {
+            break;
         }
         println!("{}: command not found", command.trim());
     }
