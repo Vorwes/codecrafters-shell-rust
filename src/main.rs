@@ -11,14 +11,14 @@ enum Command<'a> {
     Echo(&'a str),
     Type(&'a str),
     Empty,
-    Unknown(&'a str),
+    Unknown(&'a str, &'a str),
 }
 
 impl<'a> Command<'a> {
     fn parse(input: &'a str) -> Self {
         let input = input.trim();
 
-        let (cmd, args) = input.split_once(" ").unwrap_or((input, ""));
+        let (cmd, args) = input.split_once(char::is_whitespace).unwrap_or((input, ""));
         let args = args.trim();
 
         match cmd {
@@ -26,7 +26,7 @@ impl<'a> Command<'a> {
             "echo" => Command::Echo(args),
             "type" => Command::Type(args),
             "" => Command::Empty,
-            _ => Command::Unknown(cmd),
+            _ => Command::Unknown(cmd, args),
         }
     }
 
@@ -38,7 +38,7 @@ impl<'a> Command<'a> {
                 Command::Empty => {
                     println!("{}: not found", cmd);
                 }
-                Command::Unknown(cmd) => match self.find_executable(cmd) {
+                Command::Unknown(cmd, _) => match find_executable(cmd) {
                     Some(path) => println!("{} is {}", cmd, path.display()),
                     None => println!("{} not found", cmd),
                 },
@@ -46,24 +46,32 @@ impl<'a> Command<'a> {
                     println!("{} is a shell builtin", cmd);
                 }
             },
-            Command::Unknown(cmd) => println!("{}: command not found", cmd),
-            Command::Empty => println!(": command not found"),
+            Command::Unknown(cmd, args) => match find_executable(cmd) {
+                Some(path) => {
+                    let args: Vec<String> =
+                        args.split_whitespace().map(|s| s.to_string()).collect();
+                    let output = execute_external_command(&path.to_string_lossy(), &args);
+                    print!("{}", output);
+                }
+                None => println!("{}: command not found", cmd),
+            },
+            Command::Empty => {}
         }
         true
     }
+}
 
-    fn find_executable(&self, cmd: &str) -> Option<PathBuf> {
-        let paths = std::env::var("PATH").ok()?;
+fn find_executable(cmd: &str) -> Option<PathBuf> {
+    let paths = std::env::var("PATH").ok()?;
 
-        for mut path in env::split_paths(&paths) {
-            path.push(cmd);
+    for mut path in env::split_paths(&paths) {
+        path.push(cmd);
 
-            if path.is_file() && is_executable(&path) {
-                return Some(path);
-            }
+        if is_executable(&path) {
+            return Some(path);
         }
-        None
     }
+    None
 }
 
 fn is_executable(path: &Path) -> bool {
@@ -78,6 +86,20 @@ fn is_executable(path: &Path) -> bool {
     let mode = metadata.permissions().mode();
 
     mode & 0o111 != 0
+}
+
+fn execute_external_command(cmd: &str, args: &[String]) -> String {
+    let cmd = Path::new(cmd)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .expect("Invalid command path");
+
+    let output = std::process::Command::new(cmd)
+        .args(args)
+        .output()
+        .expect("Failed to execute command");
+
+    String::from_utf8_lossy(&output.stdout).to_string()
 }
 
 fn main() {
