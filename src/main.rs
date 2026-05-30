@@ -11,6 +11,7 @@ enum Command<'a> {
     Echo(&'a str),
     Type(&'a str),
     Pwd,
+    Cd(&'a str),
     Empty,
     Unknown(&'a str, &'a str),
 }
@@ -27,6 +28,7 @@ impl<'a> Command<'a> {
             "echo" => Command::Echo(args),
             "type" => Command::Type(args),
             "pwd" => Command::Pwd,
+            "cd" => Command::Cd(args),
             "" => Command::Empty,
             _ => Command::Unknown(cmd, args),
         }
@@ -49,6 +51,11 @@ impl<'a> Command<'a> {
                 }
             },
             Command::Pwd => println!("{}", env::current_dir().unwrap().display()),
+            Command::Cd(path) => {
+                env::set_current_dir(path).unwrap_or_else(|_| {
+                    println!("cd: no such file or directory: {}", path);
+                });
+            }
             Command::Unknown(cmd, args) => match find_executable(cmd) {
                 Some(path) => {
                     let args: Vec<String> =
