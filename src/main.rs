@@ -10,6 +10,7 @@ enum Command<'a> {
     Exit,
     Echo(&'a str),
     Type(&'a str),
+    Pwd,
     Empty,
     Unknown(&'a str, &'a str),
 }
@@ -25,6 +26,7 @@ impl<'a> Command<'a> {
             "exit" => Command::Exit,
             "echo" => Command::Echo(args),
             "type" => Command::Type(args),
+            "pwd" => Command::Pwd,
             "" => Command::Empty,
             _ => Command::Unknown(cmd, args),
         }
@@ -46,6 +48,7 @@ impl<'a> Command<'a> {
                     println!("{} is a shell builtin", cmd);
                 }
             },
+            Command::Pwd => println!("{}", env::current_dir().unwrap().display()),
             Command::Unknown(cmd, args) => match find_executable(cmd) {
                 Some(path) => {
                     let args: Vec<String> =
