@@ -52,9 +52,21 @@ impl<'a> Command<'a> {
             },
             Command::Pwd => println!("{}", env::current_dir().unwrap().display()),
             Command::Cd(path) => {
-                env::set_current_dir(path).unwrap_or_else(|_| {
-                    println!("cd: no such file or directory: {}", path);
-                });
+                let path = if path == &"~" {
+                    match env::home_dir() {
+                        Some(dir) => dir,
+                        None => {
+                            eprintln!("cd: could not determine home directory");
+                            return true;
+                        }
+                    }
+                } else {
+                    PathBuf::from(path)
+                };
+
+                if let Err(e) = std::env::set_current_dir(&path) {
+                    eprintln!("cd: {}: {}", path.display(), e);
+                }
             }
             Command::Unknown(cmd, args) => match find_executable(cmd) {
                 Some(path) => {
